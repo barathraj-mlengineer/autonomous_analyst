@@ -4,6 +4,5 @@ matplotlib
 fpdf
 langchain
 groq
-psycopg2
 python-dotenv
 supabase
