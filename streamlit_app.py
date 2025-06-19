@@ -18,7 +18,7 @@ if menu == "Dashboard":
     if uploaded_file:
         df = csv_loader.load_csv(uploaded_file)
     elif query:
-        df = db_connector.fetch_postgres_data(query)
+        df = db_connector.fetch_supabase_data(query)
     else:
         df = None
 
