@@ -6,6 +6,9 @@ from agent.groq_mixtral_agent import run_agent
 from pdf import pdf_exporter
 import admin_panel
 import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
+from scipy.stats import zscore
+
 st.set_page_config(page_title="Autonomous Data Analyst AI", layout="wide")
 
 menu = st.sidebar.radio("Navigation", ["Dashboard", "Admin"])
@@ -23,7 +26,53 @@ if menu == "Dashboard":
         df = None
 
     if df is not None:
+        # ===== DATA HANDLING STARTS =====
+        st.markdown("### 🧹 Data Cleaning and Preprocessing")
+
+        # Show original shape
+        st.write("🔹 Original Shape:", df.shape)
+
+        # Drop duplicates
+        df = df.drop_duplicates()
+
+        # Fix data types
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                try:
+                    df[col] = pd.to_datetime(df[col])
+                except:
+                    pass
+
+        # Convert numeric columns (forcefully)
+        for col in df.select_dtypes(include='object').columns:
+            try:
+                df[col] = pd.to_numeric(df[col], errors='ignore')
+            except:
+                pass
+
+        # Fill missing values
+        for col in df.columns:
+            if df[col].dtype in ['int64', 'float64']:
+                df[col].fillna(df[col].mean(), inplace=True)
+            else:
+                df[col].fillna(df[col].mode()[0], inplace=True)
+
+        # Remove outliers using Z-score
+        numeric_cols = df.select_dtypes(include='number').columns
+        if not numeric_cols.empty:
+            z_scores = zscore(df[numeric_cols])
+            df = df[(z_scores < 3).all(axis=1)]
+
+        # Encode categorical columns
+        for col in df.select_dtypes(include='object').columns:
+            df[col] = LabelEncoder().fit_transform(df[col].astype(str))
+
+        # Show cleaned shape
+        st.write("✅ Cleaned Shape:", df.shape)
+        # ===== DATA HANDLING ENDS =====
+
         st.dataframe(df)
+
         st.markdown("### Summary by AI")
         summary = run_agent(f"Give a summary analysis for this dataframe:\n{df.head(10).to_markdown()}")
         st.info(summary)
@@ -75,8 +124,7 @@ if menu == "Dashboard":
 # ========================
         st.markdown("### Bar Chart")
 
-# Pick categorical and numerical columns
-        categorical_cols = df.select_dtypes(include='object').columns.tolist()
+        categorical_cols = df.select_dtypes(include='int64').columns.tolist()  # after encoding
         if categorical_cols and numerical_cols:
             cat_col = st.selectbox("Select Categorical Column", categorical_cols, key="bar_cat")
             num_col = st.selectbox("Select Numerical Column", numerical_cols, key="bar_num")
@@ -96,37 +144,33 @@ if menu == "Dashboard":
 # Heatmap
 # ========================
         st.markdown("### Heatmap")
-
         numerical_df = df.select_dtypes(include=['number'])
 
         if numerical_df.shape[1] >= 2:
-          fig, ax = plt.subplots()
-          sns.heatmap(numerical_df.corr(), annot=True, cmap="coolwarm", ax=ax)
-          st.pyplot(fig)
+            fig, ax = plt.subplots()
+            sns.heatmap(numerical_df.corr(), annot=True, cmap="coolwarm", ax=ax)
+            st.pyplot(fig)
         else:
-          st.warning("Not enough numerical columns to generate a heatmap.")
+            st.warning("Not enough numerical columns to generate a heatmap.")
 
 # ========================
 # Pie Chart
 # ========================
         st.markdown("### Pie Chart from Categorical Column")
-
         if categorical_cols:
-           selected_col = st.selectbox("Select a categorical column", categorical_cols, key="pie_col")
-           category_counts = df[selected_col].value_counts()
+            selected_col = st.selectbox("Select a categorical column", categorical_cols, key="pie_col")
+            category_counts = df[selected_col].value_counts()
 
-           fig, ax = plt.subplots()
-           ax.pie(category_counts.values,
-           labels=category_counts.index,
-           autopct='%1.1f%%',
-           startangle=90)
-           ax.axis('equal')
-           plt.tight_layout(pad=3.0)
-           st.pyplot(fig)
+            fig, ax = plt.subplots()
+            ax.pie(category_counts.values,
+                   labels=category_counts.index,
+                   autopct='%1.1f%%',
+                   startangle=90)
+            ax.axis('equal')
+            plt.tight_layout(pad=3.0)
+            st.pyplot(fig)
         else:
-           st.warning("No categorical columns found for pie chart.")
-
-
+            st.warning("No categorical columns found for pie chart.")
 
         if st.button("📥 Download PDF Report"):
             fig_path = "chart.png"
