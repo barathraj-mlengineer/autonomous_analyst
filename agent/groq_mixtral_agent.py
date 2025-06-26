@@ -5,7 +5,7 @@ import os
 
 llm = ChatGroq(
     api_key="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",
-    model_name="llama3-70b-8192"
+    model_name="llama3-8b-8192"
 )
 
 tools = [
