@@ -9,3 +9,5 @@ supabase
 langchain_groq
 seaborn
 tabulate
+scikit-learn
+scipy
