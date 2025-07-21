@@ -4,7 +4,7 @@ from langchain_experimental.tools import PythonREPLTool
 import os
 
 llm = ChatGroq(
-    api_key="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",
+    api_key="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",
     model_name="llama3-8b-8192"
 )
 
