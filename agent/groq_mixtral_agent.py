@@ -1,53 +1,21 @@
 from langchain_groq import ChatGroq
-from langchain.agents import create_react_agent, AgentExecutor
-from langchain_community.tools import PythonREPLTool
-from langchain_core.prompts import PromptTemplate
+from langchain.agents import initialize_agent, Tool
+from langchain_experimental.tools import PythonREPLTool
+import os
 
-# LLM
 llm = ChatGroq(
     api_key="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",
     model_name="llama-3.3-70b-versatile"
 )
 
-# Tools
-tools = [PythonREPLTool()]
+tools = [
+    Tool(name="Python Interpreter", func=PythonREPLTool().run, description="Useful for running code on the fly")
+]
 
-# ReAct prompt (MANDATORY in new LangChain)
-prompt = PromptTemplate.from_template(
-    """Answer the following questions as best you can.
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question
-Thought: you should think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-Thought: I now know the final answer
-Final Answer: the final answer to the question
-
-Question: {input}
-{agent_scratchpad}
-"""
+agent = initialize_agent(
+    tools, llm, agent="chat-zero-shot-react-description", verbose=True,handle_parsing_errors=True 
 )
 
-# Create agent
-agent = create_react_agent(
-    llm=llm,
-    tools=tools,
-    prompt=prompt
-)
+def run_agent(prompt):
+    return agent.run(prompt)
 
-# Executor
-agent_executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    verbose=True,
-    handle_parsing_errors=True
-)
-
-def run_agent(prompt: str):
-    return agent_executor.invoke({"input": prompt})["output"]
